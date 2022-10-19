@@ -27,7 +27,7 @@ namespace Core.Utilities.Business
 
         public async Task RunSqlQueriesInTransaction(params IInvoke[] invokes)
         {
-            using TransactionScope transactionScope = new(TransactionScopeOption.RequiresNew);
+            TransactionScope transactionScope = new(TransactionScopeAsyncFlowOption.Enabled);
             try
             {
                 foreach (IInvoke invoke in invokes)
@@ -48,8 +48,11 @@ namespace Core.Utilities.Business
             }
             catch
             {
-                transactionScope.Dispose();
                 throw;
+            }
+            finally
+            {
+                transactionScope.Dispose();
             }
         }
     }

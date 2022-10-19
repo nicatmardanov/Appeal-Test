@@ -76,32 +76,9 @@ namespace Business.Concrete
                 return new ErrorDataResult<decimal>(validationIssue.Message);
 
             Transfer? transfer = _mapper.Map<TransferAddDto, Transfer>(addDto);
-
-            await bs.RunSqlQueriesInTransaction(
-                new Invoke<Func<Task<IResult>>>(async () =>
-                {
-                    return await _transferDal.AddAsync(transfer) > 0 ? new SuccessResult() : new ErrorResult();
-                }),
-                new Invoke<Func<Task<IResult>>>(async () =>
-                {
-                    return await _advanceService.UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = -transfer.Amount });
-                }));
+            await bs.RunSqlQueriesInTransaction(AddAsync(transfer), UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = -transfer.Amount }));
 
             return new SuccessDataResult<decimal>(data: advanceDataResult.Data!.Amount - transfer.Amount);
-
-            //using TransactionScope ts = new();
-            //try
-            //{
-            //    _ = await _transferDal.AddAsync(transfer);
-            //    IResult updateAmountResult = await _advanceService.UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = -transfer.Amount });
-            //    ts.Complete();
-            //    return updateAmountResult.Success ? new SuccessDataResult<decimal>(data: advanceDataResult.Data!.Amount - transfer.Amount) : new ErrorDataResult<decimal>(updateAmountResult.Message!);
-            //}
-            //catch
-            //{
-            //    ts.Dispose();
-            //    throw;
-            //}
         }
 
         [ValidationAspect(typeof(TransferUpdateValidator))]
@@ -119,18 +96,11 @@ namespace Business.Concrete
             if (transfer!.Amount == request.Amount)
                 return new SuccessResult();
 
-            await bs.RunSqlQueriesInTransaction(
-                new Invoke<Func<Task<IResult>>>(async () =>
-                {
-                    return await _transferDal.UpdateAsync(request) ? new SuccessResult() : new ErrorResult();
-                }),
-                new Invoke<Func<Task<IResult>>>(async () =>
-                {
-                    return await _advanceService.UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = transfer.Amount - request.Amount });
-                }));
-
+            await bs.RunSqlQueriesInTransaction(UpdateAsync(request), UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = transfer.Amount - request.Amount }));
             return new SuccessResult();
         }
+
+
 
         [ValidationAspect(typeof(TransferDeleteValidator))]
         [LogAspect(typeof(FileLogger))]
@@ -145,16 +115,7 @@ namespace Business.Concrete
                 return new ErrorResult(validationIssue.Message!);
 
 
-            await bs.RunSqlQueriesInTransaction(
-                new Invoke<Func<Task<IResult>>>(async () =>
-                {
-                    return await _transferDal.DeleteAsync(request) ? new SuccessResult() : new ErrorResult();
-                }),
-                new Invoke<Func<Task<IResult>>>(async () =>
-                {
-                    return await _advanceService.UpdateAmountAsync(new() { Id = transfer!.AdvanceId, Amount = transfer.Amount });
-                }));
-
+            await bs.RunSqlQueriesInTransaction(DeleteAsync(request), UpdateAmountAsync(new() { Id = transfer!.AdvanceId, Amount = transfer.Amount }));
             return new SuccessResult();
 
             //using TransactionScope ts = new();
@@ -191,6 +152,29 @@ namespace Business.Concrete
         private Invoke<Func<IResult>> CheckIfAmountIsValid(decimal? availableAmount, decimal transferAmount)
         {
             return new(() => availableAmount >= transferAmount ? new SuccessResult() : new ErrorResult(Messages.MustBeGreaterThan.Format("Transfer məbləği", "mümkün avans məbləğindən")));
+        }
+
+        private Invoke<Func<Task<IResult>>> AddAsync(Transfer transfer)
+        {
+            return new(async () => await _transferDal.AddAsync(transfer) > 0 ? new SuccessResult() : new ErrorResult());
+        }
+
+        private Invoke<Func<Task<IResult>>> UpdateAsync(Transfer transfer)
+        {
+            return new(async () => await _transferDal.UpdateAsync(transfer) ? new SuccessResult() : new ErrorResult());
+        }
+
+        private Invoke<Func<Task<IResult>>> DeleteAsync(Transfer transfer)
+        {
+            return new(async () => await _transferDal.DeleteAsync(transfer) ? new SuccessResult() : new ErrorResult());
+        }
+
+        private Invoke<Func<Task<IResult>>> UpdateAmountAsync(AdvanceUpdateAmountDto updateAmountDto)
+        {
+            return new(async () =>
+            {
+                return await _advanceService.UpdateAmountAsync(updateAmountDto);
+            });
         }
         #endregion
     }
