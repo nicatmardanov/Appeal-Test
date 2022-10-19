@@ -1,4 +1,5 @@
-﻿using Core.Utilities.Pagination;
+﻿using Core.Utilities.Requests;
+using Entities.Dtos.Transfer;
 using Entities.Models;
 
 namespace DataAccess.Abstract
@@ -6,11 +7,10 @@ namespace DataAccess.Abstract
     public interface ITransferDal
     {
         Task<Transfer?> GetByIdAsync(Transfer entity);
-        Task<IReadOnlyCollection<Transfer>> GetAsync(Transfer? entity, PagingOptions? pagingOptions = null);
-        Task<string> GetFile()
+        Task<List<Transfer>> GetAsync(DataRequest<TransferGetListRequestDto> requestDto);
+        Task<string?> GetFilePathAsync(Transfer entity);
         Task<int> AddAsync(Transfer entity);
         Task<bool> UpdateAsync(Transfer entity);
         Task<bool> DeleteAsync(Transfer entity);
-        Task<bool> ExistsAsync(Transfer? entity);
     }
 }

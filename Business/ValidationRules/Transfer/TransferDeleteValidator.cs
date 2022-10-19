@@ -9,7 +9,7 @@ namespace Business.ValidationRules.Transfer
     {
         public TransferDeleteValidator()
         {
-            RuleFor(x => x.Id).GreaterThan(0).WithMessage(Messages.MustBeGreaterThanZero.Format("Id"));
+            RuleFor(x => x.Id).GreaterThan(0).WithMessage(Messages.MustBeGreaterThan.Format("Id", "sıfırdan"));
         }
     }
 }

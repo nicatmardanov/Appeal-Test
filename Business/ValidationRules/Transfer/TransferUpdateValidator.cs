@@ -9,9 +9,9 @@ namespace Business.ValidationRules.Transfer
     {
         public TransferUpdateValidator()
         {
-            RuleFor(x => x.Id).GreaterThan(0).WithMessage(Messages.MustBeGreaterThanZero.Format("Id"));
+            RuleFor(x => x.Id).GreaterThan(0).WithMessage(Messages.MustBeGreaterThan.Format("Id", "sıfırdan"));
 
-            RuleFor(x => x.Amount).GreaterThan(0).WithMessage(Messages.MustBeGreaterThanZero.Format("Məbləğ"));
+            RuleFor(x => x.Amount).GreaterThan(0).WithMessage(Messages.MustBeGreaterThan.Format("Məbləğ", "sıfırdan"));
         }
     }
 }

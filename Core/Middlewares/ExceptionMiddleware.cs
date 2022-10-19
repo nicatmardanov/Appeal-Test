@@ -1,4 +1,4 @@
-﻿using Core.Extensions;
+﻿using Core.Entities.Concrete;
 using Core.Utilities.Constants;
 using Core.Utilities.Exceptions;
 using Microsoft.AspNetCore.Http;

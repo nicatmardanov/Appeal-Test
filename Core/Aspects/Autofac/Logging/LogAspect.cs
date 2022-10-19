@@ -1,10 +1,10 @@
-﻿using Core.CrossCuttingConcerns.Logging;
+﻿using Castle.DynamicProxy;
+using Core.CrossCuttingConcerns.Logging;
 using Core.CrossCuttingConcerns.Logging.Log4Net;
 using Core.Utilities.Constants;
 using Core.Utilities.Http;
 using Core.Utilities.Interceptors;
 using Core.Utilities.Results.Abstract;
-using Castle.DynamicProxy;
 using Microsoft.Extensions.Primitives;
 using Newtonsoft.Json;
 
@@ -80,8 +80,6 @@ namespace Core.Aspects.Autofac.Logging
         {
             Dictionary<string, string> headerData = new();
             AddDataToDictionary(ref headerData, "Id");
-            AddDataToDictionary(ref headerData, "AppKey");
-            AddDataToDictionary(ref headerData, "XAuth");
 
             return headerData;
         }

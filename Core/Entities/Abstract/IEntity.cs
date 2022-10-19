@@ -4,7 +4,7 @@
         where T : notnull
     {
         public T Id { get; set; }
-        long CreatedAt { get; set; }
-        long ModifiedAt { get; set; }
+        DateTime CreatedAt { get; set; }
+        DateTime ModifiedAt { get; set; }
     }
 }

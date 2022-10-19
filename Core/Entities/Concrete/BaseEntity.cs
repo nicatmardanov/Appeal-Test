@@ -7,7 +7,7 @@ namespace Core.Entities.Concrete
     {
         [Key]
         public T Id { get; set; }
-        public long CreatedAt { get; set; }
-        public long ModifiedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime ModifiedAt { get; set; }
     }
 }

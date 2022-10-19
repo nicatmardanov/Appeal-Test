@@ -2,7 +2,7 @@
 
 namespace Core.Entities.Dtos
 {
-    public class BaseIdDto<T>
+    public class BaseIdDto<T> : IDto
         where T : notnull
     {
         [FromHeader]

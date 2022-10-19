@@ -1,5 +1,6 @@
 ﻿using Core.Utilities.Invoke;
 using Core.Utilities.Results.Abstract;
+using System.Transactions;
 
 namespace Core.Utilities.Business
 {
@@ -22,6 +23,34 @@ namespace Core.Utilities.Business
             }
 
             return null;
+        }
+
+        public async Task RunSqlQueriesInTransaction(params IInvoke[] invokes)
+        {
+            using TransactionScope transactionScope = new(TransactionScopeOption.RequiresNew);
+            try
+            {
+                foreach (IInvoke invoke in invokes)
+                {
+                    object invokeResult = invoke.Run();
+                    IResult? result;
+
+                    if (invokeResult.GetType().BaseType?.Name == "Task" || invokeResult.GetType().BaseType?.BaseType?.Name == "Task")
+                        result = await (Task<IResult>)invokeResult;
+                    else
+                        result = (IResult)invokeResult;
+
+                    if (result?.Success != true)
+                        throw new TransactionException(result?.Message);
+                }
+
+                transactionScope.Complete();
+            }
+            catch
+            {
+                transactionScope.Dispose();
+                throw;
+            }
         }
     }
 }

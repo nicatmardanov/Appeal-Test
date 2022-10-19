@@ -16,6 +16,10 @@ namespace Core.Utilities.Results.Concrete
         {
         }
 
+        public SuccessDataResult(T data, string message) : base(data, 200, Messages.Success)
+        {
+        }
+
         public SuccessDataResult(int statusCode) : base(default, statusCode, Messages.Success)
         {
         }
@@ -28,7 +32,7 @@ namespace Core.Utilities.Results.Concrete
         {
         }
 
-        public SuccessDataResult() : base(default, 200)
+        public SuccessDataResult() : base(default, 200, Messages.NotFound)
         {
         }
     }
