@@ -2,7 +2,6 @@
 using Business.Constants;
 using Business.ValidationRules.Transfer;
 using Core.Aspects.Autofac.Logging;
-using Core.Aspects.Autofac.Transaction;
 using Core.Aspects.Autofac.Validation;
 using Core.CrossCuttingConcerns.Logging.Log4Net.Loggers;
 using Core.Extensions;
@@ -16,7 +15,6 @@ using DataAccess.Abstract;
 using Entities.Dtos.Advance;
 using Entities.Dtos.Transfer;
 using Entities.Models;
-using System.Transactions;
 
 namespace Business.Concrete
 {
@@ -71,27 +69,39 @@ namespace Business.Concrete
         [LogAspect(typeof(FileLogger))]
         public async Task<IDataResult<decimal>> AddAsync(TransferAddDto addDto)
         {
+            BusinessRules bs = new();
             IDataResult<AdvanceGetDto> advanceDataResult = await _advanceService.GetByIdAsync(new() { Id = addDto.AdvanceId });
-            IResult? validationIssue = await new BusinessRules().Run(CheckIfAdvanceDataExists(advanceDataResult), CheckIfAmountIsValid(advanceDataResult.Data?.Amount, addDto.Amount));
+            IResult? validationIssue = await bs.Run(CheckIfAdvanceDataExists(advanceDataResult), CheckIfAmountIsValid(advanceDataResult.Data?.Amount, addDto.Amount));
             if (validationIssue is not null)
                 return new ErrorDataResult<decimal>(validationIssue.Message);
 
             Transfer? transfer = _mapper.Map<TransferAddDto, Transfer>(addDto);
 
-            using TransactionScope ts = new();
-            try
-            {
-                _ = await _transferDal.AddAsync(transfer);
-                IResult updateAmountResult = await _advanceService.UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = -transfer.Amount });
-                ts.Complete();
-                return updateAmountResult.Success ? new SuccessDataResult<decimal>(data: advanceDataResult.Data!.Amount - transfer.Amount) : new ErrorDataResult<decimal>(updateAmountResult.Message!);
-            }
-            catch
-            {
-                ts.Dispose();
-                throw;
-            }
+            await bs.RunSqlQueriesInTransaction(
+                new Invoke<Func<Task<IResult>>>(async () =>
+                {
+                    return await _transferDal.AddAsync(transfer) > 0 ? new SuccessResult() : new ErrorResult();
+                }),
+                new Invoke<Func<Task<IResult>>>(async () =>
+                {
+                    return await _advanceService.UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = -transfer.Amount });
+                }));
 
+            return new SuccessDataResult<decimal>(data: advanceDataResult.Data!.Amount - transfer.Amount);
+
+            //using TransactionScope ts = new();
+            //try
+            //{
+            //    _ = await _transferDal.AddAsync(transfer);
+            //    IResult updateAmountResult = await _advanceService.UpdateAmountAsync(new() { Id = transfer.AdvanceId, Amount = -transfer.Amount });
+            //    ts.Complete();
+            //    return updateAmountResult.Success ? new SuccessDataResult<decimal>(data: advanceDataResult.Data!.Amount - transfer.Amount) : new ErrorDataResult<decimal>(updateAmountResult.Message!);
+            //}
+            //catch
+            //{
+            //    ts.Dispose();
+            //    throw;
+            //}
         }
 
         [ValidationAspect(typeof(TransferUpdateValidator))]
@@ -100,15 +110,16 @@ namespace Business.Concrete
         {
             Transfer request = _mapper.Map<TransferUpdateDto, Transfer>(updateDto);
             Transfer? transfer = await _transferDal.GetByIdAsync(request);
+            BusinessRules bs = new();
 
-            IResult? validationIssue = await new BusinessRules().Run(CheckIfTransferIsNotNull(transfer), CheckIfAdvanceIsValid(transfer?.AdvanceId, updateDto.Amount));
+            IResult? validationIssue = await bs.Run(CheckIfTransferIsNotNull(transfer), CheckIfAdvanceIsValid(transfer?.AdvanceId, updateDto.Amount));
             if (validationIssue is not null)
                 return new ErrorResult(validationIssue.Message!);
 
             if (transfer!.Amount == request.Amount)
                 return new SuccessResult();
 
-            await new BusinessRules().RunSqlQueriesInTransaction(
+            await bs.RunSqlQueriesInTransaction(
                 new Invoke<Func<Task<IResult>>>(async () =>
                 {
                     return await _transferDal.UpdateAsync(request) ? new SuccessResult() : new ErrorResult();
@@ -127,17 +138,31 @@ namespace Business.Concrete
         {
             Transfer? request = _mapper.Map<TransferDeleteDto, Transfer>(deleteDto);
             Transfer? transfer = await _transferDal.GetByIdAsync(request);
+            BusinessRules bs = new();
 
-            IResult? validationIssue = await new BusinessRules().Run(CheckIfTransferIsNotNull(transfer));
+            IResult? validationIssue = await bs.Run(CheckIfTransferIsNotNull(transfer));
             if (validationIssue is not null)
                 return new ErrorResult(validationIssue.Message!);
 
-            using TransactionScope ts = new();
-            _ = await _transferDal.DeleteAsync(request);
-            IResult result = await _advanceService.UpdateAmountAsync(new() { Id = transfer!.AdvanceId, Amount = transfer.Amount });
-            ts.Complete();
 
-            return result;
+            await bs.RunSqlQueriesInTransaction(
+                new Invoke<Func<Task<IResult>>>(async () =>
+                {
+                    return await _transferDal.DeleteAsync(request) ? new SuccessResult() : new ErrorResult();
+                }),
+                new Invoke<Func<Task<IResult>>>(async () =>
+                {
+                    return await _advanceService.UpdateAmountAsync(new() { Id = transfer!.AdvanceId, Amount = transfer.Amount });
+                }));
+
+            return new SuccessResult();
+
+            //using TransactionScope ts = new();
+            //_ = await _transferDal.DeleteAsync(request);
+            //IResult result = await _advanceService.UpdateAmountAsync(new() { Id = transfer!.AdvanceId, Amount = transfer.Amount });
+            //ts.Complete();
+
+            //return result;
         }
 
 
